@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -19,12 +19,47 @@ async function run(){
     await client.connect();
 
     const partsCollection = client.db('comTechUser').collection('parts');
+    const ordersCollection = client.db('comTechUser').collection('orders');
 
     app.get('/parts', async (req, res) => {
       const result = await partsCollection.find().toArray();
       const parts = result.reverse();
       res.send(parts);
-    })
+    });
+    app.get('/parts/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: ObjectId(id)};
+      const part = await partsCollection.findOne(query);
+      res.send(part);
+    });
+
+    // orders api
+
+    app.post('/orders', async (req, res) => {
+      const orders = req.body;
+      const result = await ordersCollection.insertOne(orders);
+      res.send(result);
+    });
+
+    // use put update quantity
+    app.put('/updateQuantity/:id', async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const filter = { _id: ObjectId(id) }
+      const options = { upsert: true };
+      const updateDoc = {
+          $set: {
+              availableQuantity: data.updatedQuantity,
+          }
+      }
+      const result = await partsCollection.updateOne(
+          filter,
+          updateDoc,
+          options
+      );
+      res.send(result);
+      console.log(data)
+  })
 
   }
   finally{}
