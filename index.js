@@ -3,6 +3,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -35,6 +36,7 @@ async function run() {
     const partsCollection = client.db('comTechUser').collection('parts');
     const ordersCollection = client.db('comTechUser').collection('orders');
     const userCollection = client.db('comTechUser').collection('users');
+    const paymentCollection = client.db('comTechUser').collection('payments');
 
     const verifyAdmin = async (req, res, next) => {
       const requester = req.decoded.email;
@@ -103,18 +105,55 @@ async function run() {
       }
     });
 
+    app.get('/orders/:id', verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const order = await ordersCollection.findOne(query);
+      res.send(order);
+    })
+
     app.post('/orders', async (req, res) => {
       const orders = req.body;
       const result = await ordersCollection.insertOne(orders);
       res.send(result);
     });
 
+    app.patch('/orders/:id', verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const payment = req.body;
+      const filter = { _id: ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          paid: true,
+          transactionId: payment.transactionId
+        }
+      }
+
+      const result = await paymentCollection.insertOne(payment);
+      const updatedOrders = await ordersCollection.updateOne(filter, updateDoc);
+
+      res.send(updateDoc);
+    })
+
     app.delete('/orders/:id', verifyJWT, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: ObjectId(id) }
       const result = await ordersCollection.deleteOne(filter);
       res.send(result);
-  })
+    })
+
+    // payment api
+    app.post('/create-payment-intent', verifyJWT, async (req, res) => {
+      const service = req.body;
+      const price = service.price;
+      const amount = price * 100;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+      res.send({ clientSecret: paymentIntent.client_secret })
+    })
 
     // use put update quantity
     app.put('/updateQuantity/:id', async (req, res) => {
