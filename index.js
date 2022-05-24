@@ -37,6 +37,7 @@ async function run() {
     const ordersCollection = client.db('comTechUser').collection('orders');
     const userCollection = client.db('comTechUser').collection('users');
     const paymentCollection = client.db('comTechUser').collection('payments');
+    const reviewCollection = client.db('comTechUser').collection('reviews');
 
     const verifyAdmin = async (req, res, next) => {
       const requester = req.decoded.email;
@@ -154,7 +155,14 @@ async function run() {
         payment_method_types: ['card']
       });
       res.send({ clientSecret: paymentIntent.client_secret })
-    })
+    });
+
+    // review api
+    app.post('/review', async (req, res) => {
+      const reviews = req.body;
+      const result = await reviewCollection.insertOne(reviews);
+      res.send(result);
+    });
 
     // use put update quantity
     app.put('/updateQuantity/:id', async (req, res) => {
