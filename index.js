@@ -125,7 +125,8 @@ async function run() {
       const updateDoc = {
         $set: {
           paid: true,
-          transactionId: payment.transactionId
+          transactionId: payment.transactionId,
+          status: payment.status
         }
       }
 
