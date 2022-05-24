@@ -36,11 +36,23 @@ async function run() {
     const ordersCollection = client.db('comTechUser').collection('orders');
     const userCollection = client.db('comTechUser').collection('users');
 
+    const verifyAdmin = async (req, res, next) => {
+      const requester = req.decoded.email;
+      const requesterAccount = await userCollection.findOne({ email: requester });
+      if (requesterAccount.role === 'admin') {
+        next();
+      }
+      else {
+        res.status(403).send({ message: 'forbidden access' })
+      }
+    }
+
     app.get('/parts', async (req, res) => {
       const result = await partsCollection.find().toArray();
       const parts = result.reverse();
       res.send(parts);
     });
+
     app.get('/parts/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
@@ -49,6 +61,20 @@ async function run() {
     });
 
     // user create api
+    app.get('/user', async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.put('/user/admin/:email', async (req, res) => {
+      const email = req.params.email;
+      const filter = { email: email };
+      const updateDoc = {
+        $set: { role: 'admin' },
+      };
+      const result = await userCollection.updateOne(filter, updateDoc)
+    });
+
     app.put('/user/:email', async (req, res) => {
       const email = req.params.email;
       const user = req.body;
@@ -64,11 +90,31 @@ async function run() {
 
     // orders api
 
+    app.get('/orders', verifyJWT, async (req, res) => {
+      const userEmail = req.query.userEmail;
+      const decodedEmail = req.decoded.email;
+      if (userEmail === decodedEmail) {
+        const query = { userEmail: userEmail };
+        const orders = await ordersCollection.find(query).toArray();
+        res.send(orders);
+      }
+      else {
+        res.status(403).send({ message: 'forbidden access' })
+      }
+    });
+
     app.post('/orders', async (req, res) => {
       const orders = req.body;
       const result = await ordersCollection.insertOne(orders);
       res.send(result);
     });
+
+    app.delete('/orders/:id', verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) }
+      const result = await ordersCollection.deleteOne(filter);
+      res.send(result);
+  })
 
     // use put update quantity
     app.put('/updateQuantity/:id', async (req, res) => {
