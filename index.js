@@ -69,13 +69,14 @@ async function run() {
       res.send(result);
     });
 
-    app.put('/user/admin/:email', async (req, res) => {
+    app.put('/user/admin/:email', verifyJWT, async (req, res) => {
       const email = req.params.email;
       const filter = { email: email };
       const updateDoc = {
         $set: { role: 'admin' },
       };
-      const result = await userCollection.updateOne(filter, updateDoc)
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result)
     });
 
     app.put('/user/:email', async (req, res) => {
@@ -158,9 +159,16 @@ async function run() {
     });
 
     // review api
+    app.get('/review', async (req, res) => {
+      const result = await reviewCollection.find().toArray();
+      const review = result.reverse();
+      res.send(review);
+    });
+
     app.post('/review', async (req, res) => {
       const reviews = req.body;
       const result = await reviewCollection.insertOne(reviews);
+      const review = result.reverse();
       res.send(result);
     });
 
