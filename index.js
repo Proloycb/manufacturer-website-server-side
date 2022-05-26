@@ -10,6 +10,20 @@ const port = process.env.PORT || 5000;
 
 // use middleware
 app.use(cors());
+
+const corsConfig = {
+  origin: '*',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE']
+}
+app.use(cors(corsConfig))
+app.options("*", cors(corsConfig))
+app.use(express.json())
+app.use(function (req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*")
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept,authorization")
+  next()
+});
 app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.7jttl.mongodb.net/?retryWrites=true&w=majority`;
@@ -129,7 +143,7 @@ async function run() {
       const email = req.params.email;
       const users = req.body;
       const filter = { email: email };
-      const options = {upsert: true}
+      const options = { upsert: true }
       const updateDoc = {
         $set: users
       }
@@ -177,7 +191,7 @@ async function run() {
       const id = req.params.id;
       const payment = req.body;
       const filter = { _id: ObjectId(id) };
-      const options = {upsert: true}
+      const options = { upsert: true }
       const updateDoc = {
         $set: {
           paid: true,
@@ -195,7 +209,7 @@ async function run() {
       const id = req.params.id;
       const payment = req.body;
       const filter = { _id: ObjectId(id) };
-      const options = {upsert: true}
+      const options = { upsert: true }
       const updateDoc = {
         $set: payment
       }
