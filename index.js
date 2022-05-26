@@ -168,21 +168,21 @@ async function run() {
       res.send(result);
     });
 
-    app.patch('/orders/:id', verifyJWT, async (req, res) => {
+    app.put('/orders/:id', verifyJWT, async (req, res) => {
       const id = req.params.id;
       const payment = req.body;
       const filter = { _id: ObjectId(id) };
+      const options = {upsert: true}
       const updateDoc = {
         $set: {
           paid: true,
           transactionId: payment.transactionId,
-          paymentStatus: payment.status
-
+          status: payment.status
         }
       }
 
       const result = await paymentCollection.insertOne(payment);
-      const updatedOrders = await ordersCollection.updateOne(filter, updateDoc);
+      const updatedOrders = await ordersCollection.updateOne(filter, updateDoc, options);
 
       res.send(updateDoc);
     })
