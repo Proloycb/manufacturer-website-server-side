@@ -56,6 +56,12 @@ async function run() {
       res.send(parts);
     });
 
+    app.post('/parts', verifyJWT, verifyAdmin, async (req, res) => {
+      const product = req.body;
+      const result = await partsCollection.insertOne(product);
+      res.send(result);
+    });
+
     app.get('/parts/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
@@ -63,20 +69,42 @@ async function run() {
       res.send(part);
     });
 
-    // user create api
-    app.get('/user', async (req, res) => {
-      const result = await userCollection.find().toArray();
+    app.delete('/parts/:id', verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) }
+      const result = await partsCollection.deleteOne(filter);
       res.send(result);
+    })
+
+    // user create api
+    app.get('/user', verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      const decodedEmail = req.decoded.email;
+      if (email === decodedEmail) {
+        const query = { email: email };
+        const users = await userCollection.find(query).toArray();
+        res.send(users);
+      }
+      else {
+        res.status(403).send({ message: 'forbidden access' })
+      }
     });
 
-    app.put('/user/admin/:email', verifyJWT, async (req, res) => {
+    app.get('/admin/:email', verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const user = await userCollection.findOne({ email: email });
+      const isAdmin = user.role === 'admin';
+      res.send({ admin: isAdmin });
+    })
+
+    app.put('/user/admin/:email', verifyJWT, verifyAdmin, async (req, res) => {
       const email = req.params.email;
       const filter = { email: email };
       const updateDoc = {
         $set: { role: 'admin' },
       };
       const result = await userCollection.updateOne(filter, updateDoc);
-      res.send(result)
+      res.send(result);
     });
 
     app.put('/user/:email', async (req, res) => {
@@ -90,11 +118,26 @@ async function run() {
       const result = await userCollection.updateOne(filter, updateDoc, options);
       const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' });
       res.send({ result, token });
+    });
+
+    app.put('/user/:email', verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const users = req.body;
+      const filter = { email: email };
+      const options = {upsert: true}
+      const updateDoc = {
+        $set: users
+      }
+      const result = await userCollection.updateOne(filter, updateDoc, options);
+      res.send(result);
     })
+
+
+
 
     // orders api
 
-    app.get('/orders', verifyJWT, async (req, res) => {
+    app.get('/order', verifyJWT, async (req, res) => {
       const userEmail = req.query.userEmail;
       const decodedEmail = req.decoded.email;
       if (userEmail === decodedEmail) {
@@ -106,6 +149,11 @@ async function run() {
         res.status(403).send({ message: 'forbidden access' })
       }
     });
+
+    app.get('/orders', verifyJWT, verifyAdmin, async (req, res) => {
+      const result = await ordersCollection.find().toArray();
+      res.send(result);
+    })
 
     app.get('/orders/:id', verifyJWT, async (req, res) => {
       const id = req.params.id;
@@ -128,7 +176,8 @@ async function run() {
         $set: {
           paid: true,
           transactionId: payment.transactionId,
-          status: payment.status
+          paymentStatus: payment.status
+
         }
       }
 
@@ -168,7 +217,6 @@ async function run() {
     app.post('/review', async (req, res) => {
       const reviews = req.body;
       const result = await reviewCollection.insertOne(reviews);
-      const review = result.reverse();
       res.send(result);
     });
 
