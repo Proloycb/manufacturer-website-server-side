@@ -90,6 +90,11 @@ async function run() {
       }
     });
 
+    app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    })
+
     app.get('/admin/:email', verifyJWT, async (req, res) => {
       const email = req.params.email;
       const user = await userCollection.findOne({ email: email });
